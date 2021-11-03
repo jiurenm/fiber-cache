@@ -10,11 +10,6 @@ import (
 	"time"
 )
 
-const (
-	// min buffer size for the writer
-	minWriterSize = 18
-)
-
 // Sizer is an interface implemented
 // by types that can estimate their
 // size when MessagePack encoded.
@@ -27,9 +22,6 @@ type Sizer interface {
 }
 
 var (
-	// Nowhere is an io.Writer to nowhere
-	Nowhere io.Writer = nwhere{}
-
 	btsType    = reflect.TypeOf(([]byte)(nil))
 	writerPool = sync.Pool{
 		New: func() interface{} {
@@ -43,19 +35,6 @@ func popWriter(w io.Writer) *Writer {
 	wr.Reset(w)
 	return wr
 }
-
-func pushWriter(wr *Writer) {
-	wr.w = nil
-	wr.wloc = 0
-	writerPool.Put(wr)
-}
-
-// freeW frees a writer for use
-// by other processes. It is not necessary
-// to call freeW on a writer. However, maintaining
-// a reference to a *Writer after calling freeW on
-// it will cause undefined behavior.
-func freeW(w *Writer) { pushWriter(w) }
 
 // Require ensures that cap(old)-len(old) >= extra.
 func Require(old []byte, extra int) []byte {
@@ -80,11 +59,6 @@ func Require(old []byte, extra int) []byte {
 	copy(n, old)
 	return n
 }
-
-// nowhere writer
-type nwhere struct{}
-
-func (n nwhere) Write(p []byte) (int, error) { return len(p), nil }
 
 // Marshaler is the interface implemented
 // by types that know how to marshal themselves
@@ -121,43 +95,6 @@ func NewWriter(w io.Writer) *Writer {
 		return wr
 	}
 	return popWriter(w)
-}
-
-// NewWriterSize returns a writer with a custom buffer size.
-func NewWriterSize(w io.Writer, sz int) *Writer {
-	// we must be able to require() 'minWriterSize'
-	// contiguous bytes, so that is the
-	// practical minimum buffer size
-	if sz < minWriterSize {
-		sz = minWriterSize
-	}
-	buf := make([]byte, sz)
-	return NewWriterBuf(w, buf)
-}
-
-// NewWriterBuf returns a writer with a provided buffer.
-// 'buf' is not used when the capacity is smaller than 18,
-// custom buffer is allocated instead.
-func NewWriterBuf(w io.Writer, buf []byte) *Writer {
-	if cap(buf) < minWriterSize {
-		buf = make([]byte, minWriterSize)
-	}
-	buf = buf[:cap(buf)]
-	return &Writer{
-		w:   w,
-		buf: buf,
-	}
-}
-
-// Encode encodes an Encodable to an io.Writer.
-func Encode(w io.Writer, e Encodable) error {
-	wr := NewWriter(w)
-	err := e.EncodeMsg(wr)
-	if err == nil {
-		err = wr.Flush()
-	}
-	freeW(wr)
-	return err
 }
 
 func (mw *Writer) flush() error {
@@ -808,54 +745,5 @@ func isSupported(k reflect.Kind) bool {
 		return false
 	default:
 		return true
-	}
-}
-
-// GuessSize guesses the size of the underlying
-// value of 'i'. If the underlying value is not
-// a simple builtin (or []byte), GuessSize defaults
-// to 512.
-func GuessSize(i interface{}) int {
-	if i == nil {
-		return NilSize
-	}
-
-	switch i := i.(type) {
-	case Sizer:
-		return i.Msgsize()
-	case Extension:
-		return ExtensionPrefixSize + i.Len()
-	case float64:
-		return Float64Size
-	case float32:
-		return Float32Size
-	case uint8, uint16, uint32, uint64, uint:
-		return UintSize
-	case int8, int16, int32, int64, int:
-		return IntSize
-	case []byte:
-		return BytesPrefixSize + len(i)
-	case string:
-		return StringPrefixSize + len(i)
-	case complex64:
-		return Complex64Size
-	case complex128:
-		return Complex128Size
-	case bool:
-		return BoolSize
-	case map[string]interface{}:
-		s := MapHeaderSize
-		for key, val := range i {
-			s += StringPrefixSize + len(key) + GuessSize(val)
-		}
-		return s
-	case map[string]string:
-		s := MapHeaderSize
-		for key, val := range i {
-			s += 2*StringPrefixSize + len(key) + len(val)
-		}
-		return s
-	default:
-		return 512
 	}
 }

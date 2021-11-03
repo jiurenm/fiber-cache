@@ -463,34 +463,6 @@ func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 	return int32(i), o, err
 }
 
-// ReadInt16Bytes tries to read an int16
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a int)
-// - IntOverflow{} (value doesn't fit in int16)
-func ReadInt16Bytes(b []byte) (int16, []byte, error) {
-	i, o, err := ReadInt64Bytes(b)
-	if i > math.MaxInt16 || i < math.MinInt16 {
-		return 0, o, IntOverflow{Value: i, FailedBitsize: 16}
-	}
-	return int16(i), o, err
-}
-
-// ReadInt8Bytes tries to read an int16
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a int)
-// - IntOverflow{} (value doesn't fit in int8)
-func ReadInt8Bytes(b []byte) (int8, []byte, error) {
-	i, o, err := ReadInt64Bytes(b)
-	if i > math.MaxInt8 || i < math.MinInt8 {
-		return 0, o, IntOverflow{Value: i, FailedBitsize: 8}
-	}
-	return int8(i), o, err
-}
-
 // ReadIntBytes tries to read an int
 // from 'b' and return the value and the remaining bytes.
 // Possible errors:
@@ -627,68 +599,6 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 	}
 }
 
-// ReadUint32Bytes tries to read a uint32
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a uint)
-// - UintOverflow{} (value too large for uint32)
-func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
-	if v > math.MaxUint32 {
-		return 0, nil, UintOverflow{Value: v, FailedBitsize: 32}
-	}
-	return uint32(v), o, err
-}
-
-// ReadUint16Bytes tries to read a uint16
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a uint)
-// - UintOverflow{} (value too large for uint16)
-func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
-	if v > math.MaxUint16 {
-		return 0, nil, UintOverflow{Value: v, FailedBitsize: 16}
-	}
-	return uint16(v), o, err
-}
-
-// ReadUint8Bytes tries to read a uint8
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a uint)
-// - UintOverflow{} (value too large for uint8)
-func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
-	if v > math.MaxUint8 {
-		return 0, nil, UintOverflow{Value: v, FailedBitsize: 8}
-	}
-	return uint8(v), o, err
-}
-
-// ReadUintBytes tries to read a uint
-// from 'b' and return the value and the remaining bytes.
-// Possible errors:
-// - ErrShortBytes (too few bytes)
-// - TypeError{} (not a uint)
-// - UintOverflow{} (value too large for uint; 32-bit platforms only)
-func ReadUintBytes(b []byte) (uint, []byte, error) {
-	if smallint {
-		u, b, err := ReadUint32Bytes(b)
-		return uint(u), b, err
-	}
-	u, b, err := ReadUint64Bytes(b)
-	return uint(u), b, err
-}
-
-// ReadByteBytes is analogous to ReadUint8Bytes
-func ReadByteBytes(b []byte) (byte, []byte, error) {
-	return ReadUint8Bytes(b)
-}
-
 // ReadBytesBytes reads a 'bin' object
 // from 'b' and returns its vaue and
 // the remaining bytes in 'b'.
@@ -770,56 +680,6 @@ func ReadBytesZC(b []byte) (v, o []byte, err error) {
 	return readBytesBytes(b, nil, true)
 }
 
-func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
-	l := len(b)
-	if l < 1 {
-		err = ErrShortBytes
-		return
-	}
-
-	lead := b[0]
-	var read uint32
-	var skip int
-	switch lead {
-	case mbin8:
-		if l < 2 {
-			err = ErrShortBytes
-			return
-		}
-
-		read = uint32(b[1])
-		skip = 2
-
-	case mbin16:
-		if l < 3 {
-			err = ErrShortBytes
-			return
-		}
-		read = uint32(big.Uint16(b[1:]))
-		skip = 3
-
-	case mbin32:
-		if l < 5 {
-			err = ErrShortBytes
-			return
-		}
-		read = uint32(big.Uint32(b[1:]))
-		skip = 5
-
-	default:
-		err = badPrefix(BinType, lead)
-		return
-	}
-
-	if read != uint32(len(into)) {
-		err = ArrayError{Wanted: uint32(len(into)), Got: read}
-		return
-	}
-
-	o = b[skip+copy(into, b[skip:]):]
-	return
-}
-
 // ReadStringZC reads a messagepack string field
 // without copying. The returned []byte points
 // to the same memory as the input slice.
@@ -890,22 +750,6 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 func ReadStringBytes(b []byte) (string, []byte, error) {
 	v, o, err := ReadStringZC(b)
 	return string(v), o, err
-}
-
-// ReadStringAsBytes reads a 'str' object
-// into a slice of bytes. 'v' is the value of
-// the 'str' object, which may reside in memory
-// pointed to by 'scratch.' 'o' is the remaining bytes
-// in 'b.''
-// Possible errors:
-// - ErrShortBytes (b not long enough)
-// - TypeError{} (not 'str' type)
-// - InvalidPrefixError (unknown type marker)
-func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
-	var tmp []byte
-	tmp, o, err = ReadStringZC(b)
-	v = append(scratch[:0], tmp...)
-	return
 }
 
 // ReadComplex128Bytes reads a complex128

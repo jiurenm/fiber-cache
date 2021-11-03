@@ -78,10 +78,6 @@ func (t Type) String() string {
 	}
 }
 
-func freeR(m *Reader) {
-	readerPool.Put(m)
-}
-
 // Unmarshaler is the interface fulfilled
 // by objects that know how to unmarshal
 // themselves from MessagePack.
@@ -99,14 +95,6 @@ type Decodable interface {
 	DecodeMsg(*Reader) error
 }
 
-// Decode decodes 'd' from 'r'.
-func Decode(r io.Reader, d Decodable) error {
-	rd := NewReader(r)
-	err := d.DecodeMsg(rd)
-	freeR(rd)
-	return err
-}
-
 // NewReader returns a *Reader that
 // reads from the provided reader. The
 // reader will be buffered.
@@ -118,17 +106,6 @@ func NewReader(r io.Reader) *Reader {
 		p.R.Reset(r)
 	}
 	return p
-}
-
-// NewReaderSize returns a *Reader with a buffer of the given size.
-// (This is vastly preferable to passing the decoder a reader that is already buffered.)
-func NewReaderSize(r io.Reader, sz int) *Reader {
-	return &Reader{R: fwd.NewReaderSize(r, sz)}
-}
-
-// NewReaderBuf returns a *Reader with a provided buffer.
-func NewReaderBuf(r io.Reader, buf []byte) *Reader {
-	return &Reader{R: fwd.NewReaderBuf(r, buf)}
 }
 
 // Reader wraps an io.Reader and provides

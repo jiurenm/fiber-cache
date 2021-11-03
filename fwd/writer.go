@@ -2,56 +2,10 @@ package fwd
 
 import "io"
 
-const (
-	// DefaultWriterSize is the
-	// default write buffer size.
-	DefaultWriterSize = 2048
-
-	minWriterSize = minReaderSize
-)
-
 // Writer is a buffered writer
 type Writer struct {
 	w   io.Writer // writer
 	buf []byte    // 0:len(buf) is bufered data
-}
-
-// NewWriter returns a new writer
-// that writes to 'w' and has a buffer
-// that is `DefaultWriterSize` bytes.
-func NewWriter(w io.Writer) *Writer {
-	if wr, ok := w.(*Writer); ok {
-		return wr
-	}
-	return &Writer{
-		w:   w,
-		buf: make([]byte, 0, DefaultWriterSize),
-	}
-}
-
-// NewWriterSize returns a new writer that
-// writes to 'w' and has a buffer size 'n'.
-func NewWriterSize(w io.Writer, n int) *Writer {
-	if wr, ok := w.(*Writer); ok && cap(wr.buf) >= n {
-		return wr
-	}
-	buf := make([]byte, 0, max(n, minWriterSize))
-	return NewWriterBuf(w, buf)
-}
-
-// NewWriterBuf returns a new writer
-// that writes to 'w' and has 'buf' as a buffer.
-// 'buf' is not used when has smaller capacity than 18,
-// custom buffer is allocated instead.
-func NewWriterBuf(w io.Writer, buf []byte) *Writer {
-	if cap(buf) < minWriterSize {
-		buf = make([]byte, 0, minWriterSize)
-	}
-	buf = buf[:0]
-	return &Writer{
-		w:   w,
-		buf: buf,
-	}
 }
 
 // Buffered returns the number of buffered bytes

@@ -156,14 +156,8 @@ func AppendUint64(b []byte, u uint64) []byte {
 	}
 }
 
-// AppendUint appends a uint to the slice
-func AppendUint(b []byte, u uint) []byte { return AppendUint64(b, uint64(u)) }
-
 // AppendUint8 appends a uint8 to the slice
 func AppendUint8(b []byte, u uint8) []byte { return AppendUint64(b, uint64(u)) }
-
-// AppendByte is analogous to AppendUint8
-func AppendByte(b []byte, u byte) []byte { return AppendUint8(b, uint8(u)) }
 
 // AppendUint16 appends a uint16 to the slice
 func AppendUint16(b []byte, u uint16) []byte { return AppendUint64(b, uint64(u)) }
@@ -225,33 +219,6 @@ func AppendString(b []byte, s string) []byte {
 		n += 5
 	}
 	return o[:n+copy(o[n:], s)]
-}
-
-// AppendStringFromBytes appends a []byte
-// as a MessagePack 'str' to the slice 'b.'
-func AppendStringFromBytes(b, str []byte) []byte {
-	sz := len(str)
-	var n int
-	var o []byte
-	switch {
-	case sz <= 31:
-		o, n = ensure(b, 1+sz)
-		o[n] = wfixstr(uint8(sz))
-		n++
-	case sz <= math.MaxUint8:
-		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], mstr8, uint8(sz))
-		n += 2
-	case sz <= math.MaxUint16:
-		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], mstr16, uint16(sz))
-		n += 3
-	default:
-		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], mstr32, uint32(sz))
-		n += 5
-	}
-	return o[:n+copy(o[n:], str)]
 }
 
 // AppendComplex64 appends a complex64 to the slice as a MessagePack extension

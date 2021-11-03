@@ -43,25 +43,6 @@ type contextError interface {
 	withContext(ctx string) error
 }
 
-// Cause returns the underlying cause of an error that has been wrapped
-// with additional context.
-func Cause(e error) error {
-	out := e
-	if e, ok := e.(errWrapped); ok && e.cause != nil {
-		out = e.cause
-	}
-	return out
-}
-
-// Resumable returns whether or not the error means that the stream of data is
-// malformed and the information is unrecoverable.
-func Resumable(e error) bool {
-	if e, ok := e.(Error); ok {
-		return e.Resumable()
-	}
-	return resumableDefault
-}
-
 // WrapError wraps an error with additional context that allows the part of the
 // serialized type that caused the problem to be identified. Underlying errors
 // can be retrieved using Cause()

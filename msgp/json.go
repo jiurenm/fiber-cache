@@ -48,15 +48,6 @@ type jsWriter interface {
 	WriteString(string) (int, error)
 }
 
-// CopyToJSON reads MessagePack from 'src' and copies it
-// as JSON to 'dst' until EOF.
-func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
-	r := NewReader(src)
-	n, err = r.WriteToJSON(dst)
-	freeR(r)
-	return
-}
-
 // WriteToJSON translates MessagePack from 'r' and writes it as
 // JSON to 'w' until the underlying reader returns io.EOF. It returns
 // the number of bytes written, and an error if it stopped before EOF.

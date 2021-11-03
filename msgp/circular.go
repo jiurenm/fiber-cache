@@ -14,11 +14,6 @@ type EndlessReader struct {
 	offset int
 }
 
-// NewEndlessReader returns a new endless reader
-func NewEndlessReader(b []byte, tb timer) *EndlessReader {
-	return &EndlessReader{tb: tb, data: b, offset: 0}
-}
-
 // Read implements io.Reader. In practice, it
 // always returns (len(p), nil), although it
 // fills the supplied slice while the benchmark
